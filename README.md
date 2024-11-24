@@ -15,6 +15,8 @@ Once you have debugged the starter implementation, you will need to make further
 
 Dependencies are given in the `requirements.txt` file. Feel free to use/include any others you'd like, within reason. If you have doubts about whether a library is allowed or not, please ask.
 
+Note: Python 3.10+ is required for this code base.
+
 ## Requirements
 
 1. For the purposes of this take-home, a valid takeoff initiation is defined as one in which the following conditions are true:

@@ -1,5 +1,9 @@
-json
 pandas
 pathlib
+matplotlib
 numpy
+
+# this requires the 'geos' package to be installed.
+# On Mac: brew install geos
+
 shapely
