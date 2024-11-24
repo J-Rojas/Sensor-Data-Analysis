@@ -121,7 +121,7 @@ def moving_average_filter(arr: np.ndarray, window_size: int) -> np.ndarray:
         Smoothed array
     """
     kernel = 1 / window_size * np.ones(window_size)
-    smoothed = np.convolve(arr, kernel)
+    smoothed = np.convolve(arr, kernel, mode='same')
     return smoothed
 
 
