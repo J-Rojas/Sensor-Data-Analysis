@@ -1,3 +1,7 @@
+#
+# Copyright: Jose Rojas, 2024
+#
+
 import pandas as pd
 from pathlib import Path
 from shapely import Point, Polygon
@@ -51,11 +55,14 @@ def read_data(filepath: Path) -> pd.DataFrame:
     for col in [CSVColumns.GndSpd, CSVColumns.E1_RPM, CSVColumns.AltB]:
         df_in = df[col].to_numpy().transpose()
         df_smoothed = moving_average_filter(
-           df_in, window_size=20 # increased the moving average window to further reduce noise based on empirical analysis of the dataset
+           df_in, window_size=10 # increased the moving average window to further reduce noise based on empirical analysis of the dataset
         )
         # ensure the smoothed data is the same size as original data samples
         assert df_in.shape == df_smoothed.shape
         df[col] = pd.DataFrame(df_smoothed.transpose())
+
+    # low pass filter to smooth out engine rpm noise that can cause some false positives
+    df[CSVColumns.E1_RPM] = low_pass_filter(df[CSVColumns.E1_RPM], alpha=0.9)
 
     return df
 
