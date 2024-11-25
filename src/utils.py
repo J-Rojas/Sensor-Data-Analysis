@@ -102,9 +102,9 @@ def low_pass_filter(arr: np.ndarray, alpha: float) -> np.ndarray:
         Smoothed array
     """
     smoothed = np.zeros_like(arr)
-    smoothed[0] = alpha * arr[0]
+    smoothed[0] = (1 - alpha) * arr[0]
     for i in range(1, arr.shape[0]):
-        smoothed[i] = (1 - alpha) * smoothed[i - 1] + alpha * arr[i]
+        smoothed[i] = alpha * smoothed[i - 1] + (1 - alpha) * arr[i]
 
     return smoothed
 
@@ -139,3 +139,33 @@ def plot_flight(df: pd.DataFrame, runways: list, filename: str):
 
     # Save image
     plt.savefig(filename, format="png")
+
+class SpikeDetect:
+
+    def __init__(self):
+        self._rise_idx = -1
+        self._fall_idx = -1
+
+    def detect(self, idx, value, rise_threshold, fall_threshold):
+        """
+        Detects if there is a spike in a signal, using a rising edge threshold and falling edge threshold
+
+        Params:
+            idx: index of the current value
+            value: the signal's current value
+            rise_threshold: the threshold to detect a rising edge
+            fall_threshold: the threshold to detect a falling edge
+        """
+        if self._rise_idx == -1 and value > rise_threshold:
+            self._rise_idx = idx
+
+        if self._rise_idx != -1 and self._fall_idx == -1 and value <= fall_threshold:
+            self._fall_idx = idx
+
+    @property
+    def rise_idx(self):
+        return self._rise_idx
+
+    @property
+    def fall_idx(self):
+        return self._fall_idx

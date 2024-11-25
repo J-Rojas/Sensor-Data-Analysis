@@ -15,6 +15,7 @@ from utils import (
     low_pass_filter,
     moving_average_filter,
     plot_flight,
+    SpikeDetect
 )
 
 
@@ -64,25 +65,21 @@ def detect_valid_takeoff_timestamp(df: pd.DataFrame) -> tuple[float | None, int]
     takeoff_idx = -1
     last_on_ground_speed_ind = -1
     last_alt_at_zero = 0
-    preflight_engine_check_rise_ind = -1
-    preflight_engine_check_fall_ind = -1
+    spike_detect = SpikeDetect()
 
     def on_ground_check(row_idx):
         return last_on_ground_speed_ind != -1 and last_on_ground_speed_ind <= row_idx and row[CSVColumns.AltB] < last_alt_at_zero + ALTITUDE_ERROR
 
     def has_done_preflight_engine_check(row_idx):
-        return preflight_engine_check_rise_ind != -1 and preflight_engine_check_fall_ind != -1 and preflight_engine_check_rise_ind < row_idx and preflight_engine_check_fall_ind < row_idx
+        return spike_detect.rise_idx != -1 and spike_detect.fall_idx != -1 and spike_detect.rise_idx < row_idx and spike_detect.fall_idx < row_idx
 
     for row_idx, row in df.iterrows():
+
+        # check the altitude and preflight engine check to detect presence near runway before take-off
         if row[CSVColumns.GndSpd] == 0.0:
             last_on_ground_speed_ind = row_idx
             last_alt_at_zero = row[CSVColumns.AltB]
-
-        if preflight_engine_check_rise_ind == -1 and row[CSVColumns.GndSpd] == 0.0 and row[CSVColumns.E1_RPM] > ENGINE_SPEED_PREFLIGHT_THRESHOLD:
-            preflight_engine_check_rise_ind = row_idx
-
-        if preflight_engine_check_rise_ind != -1 and preflight_engine_check_fall_ind == -1 and row[CSVColumns.GndSpd] == 0.0 and row[CSVColumns.E1_RPM] <= ENGINE_SPEED_TAKEOFF_THRESHOLD:
-            preflight_engine_check_fall_ind = row_idx
+            spike_detect.detect(row_idx, row[CSVColumns.E1_RPM], ENGINE_SPEED_PREFLIGHT_THRESHOLD, ENGINE_SPEED_TAKEOFF_THRESHOLD)
 
         # test that the plane is on the ground (having measured the ground altitude at zero ground speed) AND
         # the plane is on the runway (the 'preflight engine check' RPM spike has occurred off the runway just prior to takeoff) AND
