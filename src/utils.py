@@ -130,7 +130,8 @@ def plot_flight(df: pd.DataFrame, runways: list, filename: str):
 
     # Show runway outlines
     for rw in runways:
-        x, y = shape(rw["geometry"]).exterior.xy
+        poly: Polygon = shape(rw["geometry"]) #type: ignore
+        x, y = poly.exterior.xy
 
         ax.plot(x, y, color="blue", linewidth=2, linestyle="-", label="Polygon")
         ax.fill(x, y, color="lightblue", alpha=0.5)
