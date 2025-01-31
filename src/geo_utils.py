@@ -26,10 +26,20 @@ def load_airport_runways(
 
         return retval
 
+def find_index_of_first_true(lst):
+    return next((i for i, x in enumerate(lst) if x), -1)
 
-def on_runway(lat: float, long: float, runways: tuple[Polygon, float] | list[tuple[Polygon, float]]) -> bool:
+def get_points_near(center: Point, radius: float, points: list[Point]) -> list[Point]:
+    return [x for x in points if center.distance(x) < radius]
+
+def on_runway(lat: float, long: float, runways: tuple[Polygon, float] | list[tuple[Polygon, float]]) -> int:
+
+    """
+    Returns the runway id of the intersecting runway, otherwise -1
+    """
+
     if type(runways) == list:
-        return any([runway[0].contains(Point(long, lat)) for runway in runways])
+        return find_index_of_first_true([runway[0].contains(Point(long, lat)) for runway in runways])
 
     runway: Polygon = runways[0] # type: ignore
-    return runway.contains(Point(long, lat))
+    return 0 if runway.contains(Point(long, lat)) else -1

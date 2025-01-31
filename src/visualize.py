@@ -3,10 +3,22 @@ from src.utils import (
     CSVColumns
 )
 from pathlib import Path
+import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 from src.detector import read_data
+from src.geo_utils import get_points_near
+import os
+import io
+import requests
+import urllib.parse
+import urllib.request
+from PIL import Image as image_open
+from shapely import Polygon, Point
+from datetime import datetime
+from IPython.display import Image, display
 
-def plot_charts(name: str, df: pd.DataFrame, takeoff_ind: int, save_func=lambda fig, name: fig.savefig(f"plots/plot_{name}.png",  bbox_inches='tight')):
+def plot_charts(name: str, df: pd.DataFrame, takeoff_ind: int, runway: tuple[Polygon, float], save_func=lambda fig, name: fig.savefig(f"plots/plot_{name}.png",  bbox_inches='tight')):
 
     # Iterate through each row in the DataFrame
     # Create a new figure for each row
@@ -44,12 +56,61 @@ def plot_charts(name: str, df: pd.DataFrame, takeoff_ind: int, save_func=lambda 
         axes[2].plot(df.index[takeoff_ind], df[CSVColumns.AltMSL][takeoff_ind], "go", label='Takeoff Moment')
     axes[2].legend(loc='upper right')  # Explicitly set the legend location
 
+    # Plot the flight, zooming into the runway
+    runway_poly = runway[0]
+    centroid = runway_poly.centroid
+    gps_points = list(map(lambda x: Point(x[1], x[0]), zip(df[CSVColumns.Latitude], df[CSVColumns.Longitude])))[:takeoff_ind+200]
+    points_near_centroid = get_points_near(centroid, 0.01, gps_points)[::5]
+    url = generate_static_map_url(centroid.y, centroid.x, poly=points_near_centroid)
+
+    # Open the URL and read the image
+    with urllib.request.urlopen(url) as response:
+        img_data = response.read()
+
+    # Convert the response data to a Pillow Image
+    img = image_open.open(io.BytesIO(img_data))
+
+    # Convert the Pillow Image to a numpy array
+    img_array = np.array(img)
+
+    axes[3].imshow(img)
+    axes[3].set_title("Runway")
+    axes[3].axis('off')
+
+    # --- Add Legend to Subplot ---
+    legend_patch = mpatches.Patch(color="magenta", label="flight path") # Create patch for THIS subplot
+    axes[3].legend(handles=[legend_patch], labels=[legend_patch.get_label()], loc='upper right', frameon=False) # Add legend to the AXES, remove frame
+
     # Adjust layout for better spacing
     plt.tight_layout()
 
     save_func(fig, name)
 
     plt.close(fig)  # Close the figure to avoid display in the notebook
+
+def generate_static_map_url(center_lat, center_lng, zoom=16, size="600x400", map_type="satellite", poly=None):
+    base_url = "https://maps.googleapis.com/maps/api/staticmap"
+    params = {
+        "center": f"{center_lat},{center_lng}",
+        "zoom": zoom,
+        "size": size,
+        "maptype": map_type,
+        "key": os.getenv('GOOGLE_MAPS_API_KEY')
+    }
+
+    if poly:
+        polyl = "color:0xFF00FF80|weight:2" + "|".join(list(map(lambda p: f"{p.y},{p.x}", poly)))
+        params["path"] = polyl
+
+    query_string = urllib.parse.urlencode(params)
+    return f"{base_url}?{query_string}"
+
+def display_static_map(url, size="400x400"):
+    response = requests.get(url)
+    if response.status_code == 200:
+        display(Image(data=response.content, embed=True, format='png', width=int(size.split('x')[0]), height=int(size.split('x')[1])))
+    else:
+        print(f"Failed to retrieve the static map. Status code: {response.status_code}")
 
 if __name__ == "__main__":
     output_file_path = "output.txt"
